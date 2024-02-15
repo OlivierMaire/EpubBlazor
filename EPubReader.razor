@@ -1,6 +1,4 @@
-@using VersOne.Epub;
-@using System.Net;
-@using System.IO;
+@inject IHttpClientFactory HttpClientFactory
 
 Welcome to EpubReader
 
@@ -11,6 +9,44 @@ Welcome to EpubReader
         Title: @Book.Title <br />
         Author: @Book.Author
     </div>
+
+    <div class="d-flex flex-row">
+        <div>
+            Navigation
+            <EPubNavigation Navigation="Book.Navigation" OnNavigation="Navigate" />
+
+        </div>
+        @*
+    <div>
+
+    @foreach (var order in Book.ReadingOrder)
+    {
+    <div>@order.FilePath</div>
+    }
+    </div>
+
+    <div>
+    local
+    @foreach (var file in Book.Content.AllFiles.Local)
+    {
+    <div>@file.FilePath</div>
+    }
+    </div>
+    <div>
+    remote
+    @foreach (var file in Book.Content.AllFiles.Remote)
+    {
+    <div>@file.Url</div>
+    }
+    </div>
+
+    <div>
+    @Book.ReadingOrder[2].Content
+    </div> *@
+
+        <EPubContent Book="@Book" NavItem="@CurrentChapter" />
+
+    </div>
 }
 
 @code {
@@ -18,6 +54,7 @@ Welcome to EpubReader
     [Parameter] public string Url { get; set; }
 
     EpubBook? Book;
+    EpubNavigationItem? CurrentChapter;
     protected override async Task OnInitializedAsync()
     {
         Book = await GetBookFromUrlAsync(Url);
@@ -26,25 +63,19 @@ Welcome to EpubReader
 
     private async Task<EpubBook> GetBookFromUrlAsync(string url)
     {
+        using (var httpClient = HttpClientFactory.CreateClient())
+        {
+            using (var stream = await httpClient.GetStreamAsync(url))
+            {
+                var book = await EpubReader.ReadBookAsync(stream);
+                return book;
 
-        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            }
+        }
+    }
 
-        // Get the response
-        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-
-        // Get the stream of data from the response
-        Stream stream = response.GetResponseStream();
-
-        // Read and process the data from the stream
-        var book = await EpubReader.ReadBookAsync(stream);
-
-
-        // Close the stream and the response
-        stream.Close();
-        response.Close();
-
-        return book;
-
-
+    private async Task Navigate(EpubNavigationItem nav)
+    {
+        CurrentChapter = nav;
     }
 }

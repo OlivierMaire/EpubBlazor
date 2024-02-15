@@ -1,0 +1,113 @@
+@using AngleSharp
+@using AngleSharp.Dom
+
+@inject BlobManagerService BlobManagerService
+
+<div>
+content
+
+@if (NavItem != null)
+{
+    <div class="calibre18"> test </div>
+    <div> CHAPTER : @NavItem.Title</div>
+    <div> Content</div>
+    <iframe sandbox="allow-same-origin" enable-annotation="true" srcdoc="@DisplayContent" ></iframe>
+    @* <iframe sandbox="allow-same-origin" enable-annotation="true" src="@blobPage" ></iframe> *@
+    @* <div> @((MarkupString)DisplayContent)</div> *@
+   
+}   
+</div>
+
+@code {
+
+    [Parameter] public EpubNavigationItem? NavItem { get; set; }
+    [Parameter] public EpubBook? Book { get; set; }
+
+    string DisplayContent = string.Empty;
+    string blobPage = string.Empty;
+
+        protected override Task OnInitializedAsync()
+        {
+
+            return base.OnInitializedAsync();
+        }
+
+        protected override async Task OnParametersSetAsync()
+        {
+            
+            if(NavItem!= null)
+            Console.WriteLine($"Hello from CHapter {NavItem.Title}");
+            await LoadContent();
+            
+            await base.OnParametersSetAsync();
+        } 
+
+        private async Task LoadContent(){
+//Use the default configuration for AngleSharp
+        IConfiguration config = Configuration.Default;
+
+        //Create a new context for evaluating webpages with the given config
+        IBrowsingContext context = BrowsingContext.New(config);
+
+        //Source to be parsed
+        string source = NavItem?.HtmlContentFile?.Content ?? string.Empty;
+
+        //Create a virtual request to specify the document to load (here from our fixed string)
+        IDocument document = await context.OpenAsync(req => req.Content(source));
+
+        var links = document.QuerySelectorAll("link");
+        foreach (var link in links)
+        {
+            if (Book != null && link != null && link.Attributes != null && 
+            link.Attributes["href"] != null && !string.IsNullOrEmpty(link.Attributes["href"]?.Value)){
+                var url = link.Attributes["href"]?.Value ?? string.Empty;
+                if(Book.Content.Css.ContainsLocalFileWithFilePath(url))
+                {
+                    var blob = await BlobManagerService.AddBlobAsync(url, 
+                    Book.Content.Css.GetLocalFileByFilePath(url).Content, 
+                    Book.Content.Css.GetLocalFileByFilePath(url).ContentMimeType );
+                    link.Attributes["href"].Value =  blob.Uri.ToString() ; 
+                }
+            }
+        }
+
+        var imgs = document.QuerySelectorAll("img");
+        foreach (var img in imgs)
+        {
+            if (Book != null && img != null && img.Attributes != null && 
+            img.Attributes["src"] != null && !string.IsNullOrEmpty(img.Attributes["src"]?.Value)){
+                var url = img.Attributes["src"]?.Value ?? string.Empty;
+                if(Book.Content.Images.ContainsLocalFileWithFilePath(url))
+                {
+                    var blob = await BlobManagerService.AddBlobAsync(url, 
+                    Book.Content.Images.GetLocalFileByFilePath(url).Content, 
+                    Book.Content.Images.GetLocalFileByFilePath(url).ContentMimeType );
+                    img.Attributes["src"].Value =  blob.Uri.ToString() ; 
+                }
+            }
+        }
+
+DisplayContent = document.DocumentElement.OuterHtml;
+@* if (!string.IsNullOrEmpty(NavItem?.HtmlContentFile?.FilePath))
+{
+ blobPage = (await BlobManagerService.AddBlobAsync(NavItem?.HtmlContentFile?.FilePath ?? string.Empty, 
+document.DocumentElement.OuterHtml, 
+"text/html")).Uri.ToString();
+} *@
+
+        @* //Do something with document like the following
+        Console.WriteLine("Serializing the (original) document:");
+        Console.WriteLine(document.DocumentElement.OuterHtml); *@
+
+        @* IElement p = document.CreateElement("p");
+        p.TextContent = "This is another paragraph.";
+
+        Console.WriteLine("Inserting another element in the body ...");
+        document.Body.AppendChild(p);
+
+        Console.WriteLine("Serializing the document again:");
+        Console.WriteLine(document.DocumentElement.OuterHtml); *@
+
+
+        }
+}
