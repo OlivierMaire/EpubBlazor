@@ -1,0 +1,50 @@
+@using VersOne.Epub;
+@using System.Net;
+@using System.IO;
+
+Welcome to EpubReader
+
+@if (Book != null)
+{
+    <div>got a book</div>
+    <div>
+        Title: @Book.Title <br />
+        Author: @Book.Author
+    </div>
+}
+
+@code {
+
+    [Parameter] public string Url { get; set; }
+
+    EpubBook? Book;
+    protected override async Task OnInitializedAsync()
+    {
+        Book = await GetBookFromUrlAsync(Url);
+        // display book
+    }
+
+    private async Task<EpubBook> GetBookFromUrlAsync(string url)
+    {
+
+        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+
+        // Get the response
+        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+
+        // Get the stream of data from the response
+        Stream stream = response.GetResponseStream();
+
+        // Read and process the data from the stream
+        var book = await EpubReader.ReadBookAsync(stream);
+
+
+        // Close the stream and the response
+        stream.Close();
+        response.Close();
+
+        return book;
+
+
+    }
+}
