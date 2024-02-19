@@ -1,0 +1,309 @@
+@using AngleSharp
+@using AngleSharp.Dom
+
+@inject BlobManagerService BlobManagerService
+@inject EPubNavigationService navService
+@* @inject ExampleJsInterop jsInterop *@
+@inject EPubJsInterop JsInterop
+ 
+<div class="flex-grow-1">
+content
+
+@if (NavItem != null)
+{
+    <div class="calibre18"> test </div>
+    @* <div> CHAPTER : @NavItem.Title</div> *@
+    <div> Content</div>
+    <div class="epub-wrapper">
+        <div class="buttons">
+            <div @onclick="() => GoPrevious()" class="prev">
+                <div>&lt;</div>
+                </div>
+            <div  @onclick="() => GoNext()" class="next">
+                <div>&gt;</div>
+                </div>
+        </div>
+        <div @ref="Scroll" class="epub-scroll" style="@scrollContainerStyle">
+<div class="frame-wrapper"  style="@containerStyle">
+    <iframe id="epub-iframe" @ref="IFrame" sandbox="allow-same-origin" enable-annotation="true" srcdoc="@DisplayContent" ></iframe>
+</div>    </div></div>  
+}   
+</div>
+
+
+
+@code {
+
+      public EpubNavigationItem? NavItem { get; set; }
+    [Parameter] public EpubBook? Book { get; set; }
+
+    ElementReference IFrame {get;set;} = default!;
+    ElementReference Scroll {get;set;} = default!;
+
+
+    private Position Position {get;set;} = default!;
+    string DisplayContent = string.Empty;
+    string blobPage = string.Empty;
+
+    decimal pageStep = 0m;
+    int IframeWidth = 0;
+
+    int containerWidth = 0;
+    string containerStyle => containerWidth > 0 ? $"width: {containerWidth}px;" : "";
+    string scrollContainerStyle => (IframeWidth > 0 ? $"width: {IframeWidth}px;" : "") + " overflow:hidden; /*overflow-x: scroll;*/ /*padding:1em;*/";
+
+System.Drawing.Size IFrameSize ;
+    int ColumnWidth = 0;
+    int ColumnGap = 0;
+
+    IDocument Document = null!;
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+          if (firstRender)
+          {
+                       navService.PositionChanged += OnPositionChanged; 
+             // load current Position
+            this.Position = navService.GetPosition();
+            await LoadContent();
+            await JsInterop.InitAsync(IFrame, Scroll);
+            await FirstRenderCalculations();
+            await UpdateContent();
+            await UpdateContent2();
+            
+            await this.ScrollToPosition();
+          }
+        } 
+
+        public async void OnPositionChanged(object? sender, Position position)
+        {
+            // get position 
+            Console.WriteLine("Position Changed");
+            Console.WriteLine(position);
+            
+            if (this.Position.NavigationItemIndex == position.NavigationItemIndex)
+            {
+                // just scroll
+            this.Position = position;
+            await this.ScrollToPosition();
+            }
+            else
+            {
+
+            this.Position = position;
+
+                // redraw
+            await LoadContent();
+                  await JsInterop.InitAsync(IFrame, Scroll);
+            await UpdateContent();
+            await UpdateContent2();
+            await this.ScrollToPosition();
+        }
+
+        }
+
+
+       
+       
+
+    private void GetNavItem()
+    {
+        var navList = Book.Navigation;
+        EpubNavigationItem? nav = null;
+
+        foreach (var pos in Position.NavigationItemIndex)
+        {
+         nav = navList[pos];
+         navList = nav.NestedItems;
+        }
+
+        NavItem = nav;
+    }
+
+        private async Task LoadContent(){
+ GetNavItem(); 
+
+//Use the default configuration for AngleSharp
+        IConfiguration config = Configuration.Default;
+
+        //Create a new context for evaluating webpages with the given config
+        IBrowsingContext context = BrowsingContext.New(config);
+
+        //Source to be parsed
+        string source = NavItem?.HtmlContentFile?.Content ?? string.Empty;
+
+        //Create a virtual request to specify the document to load (here from our fixed string)
+        Document = await context.OpenAsync(req => req.Content(source));
+
+        var links = Document.QuerySelectorAll("link");
+        foreach (var link in links)
+        {
+            if (Book != null && link != null && link.Attributes != null && 
+            link.Attributes["href"] != null && !string.IsNullOrEmpty(link.Attributes["href"]?.Value)){
+                var url = link.Attributes["href"]?.Value ?? string.Empty;
+                if(Book.Content.Css.ContainsLocalFileWithFilePath(url))
+                {
+                    var blob = await BlobManagerService.AddBlobAsync(url, 
+                    Book.Content.Css.GetLocalFileByFilePath(url).Content, 
+                    Book.Content.Css.GetLocalFileByFilePath(url).ContentMimeType );
+                    link.Attributes["href"].Value =  blob.Uri.ToString() ; 
+                }
+            }
+        }
+
+        var imgs = Document.QuerySelectorAll("img");
+        foreach (var img in imgs)
+        {
+            if (Book != null && img != null && img.Attributes != null && 
+            img.Attributes["src"] != null && !string.IsNullOrEmpty(img.Attributes["src"]?.Value)){
+                var url = img.Attributes["src"]?.Value ?? string.Empty;
+                if(Book.Content.Images.ContainsLocalFileWithFilePath(url))
+                {
+                    var blob = await BlobManagerService.AddBlobAsync(url, 
+                    Book.Content.Images.GetLocalFileByFilePath(url).Content, 
+                    Book.Content.Images.GetLocalFileByFilePath(url).ContentMimeType );
+                    img.Attributes["src"].Value =  blob.Uri.ToString() ; 
+                }
+            }
+        }
+
+
+@* await jsInterop.Prompt("hello"); *@
+        // inject javascript
+
+        @* var body = document.QuerySelector("body");
+        var script = document.CreateElement("script");
+        script.SetAttribute("src", "_content/EPubBlazor/Components/EPubCOntent.razor.js");
+        body.AppendChild(script); *@
+
+DisplayContent = Document.DocumentElement.OuterHtml;
+StateHasChanged();
+ 
+
+        }
+
+private async Task FirstRenderCalculations()
+{
+      IFrameSize = await JsInterop.GetIframeSizeAsync();
+            Console.WriteLine(IFrameSize);
+
+
+    IframeWidth = IFrameSize.Width;
+    ColumnGap = IFrameSize.Width / 10; // 10%;
+
+
+    ColumnWidth = (IFrameSize.Width / 2 - ColumnGap); // add margin around
+
+    pageStep =  ColumnWidth + ColumnGap;
+
+    IframeWidth = (int)pageStep * 2;
+
+}
+
+        private async Task UpdateContent()
+        {
+
+      
+    // update body css rules;
+
+    var body = Document.QuerySelector("body");
+
+var style = $"overflow: hidden; column-width: {ColumnWidth}px; column-gap: {ColumnGap}px; height: {IFrameSize.Height}px; width: {IframeWidth}px; column-fill: auto;box-sizing: border-box;max-width: inherit;margin: 0px !important;     padding-left: {ColumnGap/2}px !important;padding-right: {ColumnGap/2}px !important;";
+    body.SetAttribute("style",  style    );
+
+DisplayContent = Document.DocumentElement.OuterHtml;
+
+Console.WriteLine("Update COntent");
+StateHasChanged();
+
+
+
+        }
+
+        private async Task UpdateContent2()
+        {
+            await Task.Delay(25);
+
+            var scrollWidth = await JsInterop.GetScrollWidth();
+            Console.WriteLine($"scrollwidth: {scrollWidth}");
+containerWidth = scrollWidth;
+
+var nbOfPages = Math.Round(scrollWidth  / pageStep);
+// make pg nb even 
+nbOfPages = Math.Round(nbOfPages / 2, MidpointRounding.AwayFromZero) * 2;
+var newWidth = nbOfPages * pageStep;
+Console.WriteLine($"nb of pages:  {nbOfPages}, size: {newWidth} ");
+
+containerWidth = (int)newWidth;
+
+StateHasChanged();
+
+        }
+
+
+        private async Task  GoPrevious()
+
+        {
+Console.WriteLine("go previous");
+
+            // update scroll
+Position.ScrollPosition -= 2;
+Console.WriteLine(Position);
+
+decimal scrollTo = pageStep * Position.ScrollPosition;
+
+if (scrollTo < 0)
+{
+    Console.WriteLine("Got to next chapeter");
+    navService.GoToPrevious();
+}
+else{
+Console.WriteLine($"Scroll to : {scrollTo} ");
+navService.SetPosition(Position);
+}
+
+@* await JsInterop.ScrollTo(scrollTo ); *@
+        }
+
+        
+        private async Task GoNext()
+
+        {
+Console.WriteLine("go next");
+            // update scroll
+Position.ScrollPosition += 2;
+Console.WriteLine(Position);
+
+decimal scrollTo = pageStep * Position.ScrollPosition;
+
+if (scrollTo >= containerWidth)
+{
+    Console.WriteLine("Got to next chapeter");
+    navService.GoToNext();
+}
+else{
+Console.WriteLine($"Scroll to : {scrollTo} ");
+navService.SetPosition(Position);
+}
+
+
+@* await JsInterop.ScrollTo(scrollTo ); *@
+        }
+
+        private async Task ScrollToPosition()
+        {
+            if (Position.ScrollPosition == -1)
+            {
+                // came back from next chapter,
+                // need to scroll to the last page
+                var source = (containerWidth / pageStep) - 2;
+                Position.ScrollPosition = Math.Round(source / 2, MidpointRounding.AwayFromZero) * 2;
+navService.SetPosition(Position);
+
+            }
+
+decimal scrollTo = pageStep * Position.ScrollPosition;
+await JsInterop.ScrollTo(scrollTo );
+
+        }
+}

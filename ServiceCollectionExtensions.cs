@@ -31,18 +31,22 @@ public static class ServiceCollectionExtensions
         services.AddJsBlob(serviceLifetime);
         services.AddHttpClient();
         // services.AddSingleton<IBufferService, BufferService>();
+                services.AddScoped<EPubJsInterop>();
 
         switch (serviceLifetime)
         {
             case ServiceLifetime.Singleton:
                 services.AddSingleton<BlobManagerService>();
+                services.AddSingleton<EPubNavigationService>();
                 break;
             case ServiceLifetime.Scoped:
                 services.AddScoped<BlobManagerService>();
+                services.AddScoped<EPubNavigationService>();
                 break;
             case ServiceLifetime.Transient:
             default:
                 services.AddTransient<BlobManagerService>();
+                services.AddTransient<EPubNavigationService>();
                 break;
         }
 

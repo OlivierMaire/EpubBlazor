@@ -1,0 +1,51 @@
+@inject IHttpClientFactory HttpClientFactory
+@inject EPubNavigationService navService
+
+
+@if (Book != null)
+{
+    <div class="epub-reader">
+  <EPubActionBar Book="@Book"/>
+    <div class="d-flex flex-row">
+        <div style="height: 100%;">
+            <EPubNavigation Navigation="Book.Navigation"  />
+        </div>
+       
+        <EPubContent Book="@Book" />
+
+    </div>
+    </div>
+}
+
+@code {
+
+    [Parameter] public string Url { get; set; } = default!;
+    EpubBook? Book;
+    @* EpubNavigationItem? CurrentChapter; *@
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("EPubReader - OnInitializedAsync");
+        Book = await GetBookFromUrlAsync(Url);
+        // display book
+
+    
+    }
+
+    private async Task<EpubBook> GetBookFromUrlAsync(string url)
+    {
+        using (var httpClient = HttpClientFactory.CreateClient())
+        {
+            using (var stream = await httpClient.GetStreamAsync(url))
+            {
+                var book = await EpubReader.ReadBookAsync(stream);
+                return book;
+
+            }
+        }
+    }
+
+    @* private async Task Navigate(EpubNavigationItem nav)
+    {
+        CurrentChapter = nav;
+    } *@
+}

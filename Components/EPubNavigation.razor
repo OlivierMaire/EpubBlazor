@@ -1,0 +1,39 @@
+@using VersOne.Epub;
+@inject NavigationManager NavManager
+@inject EPubNavigationService navService
+
+@if (Navigation != null)
+{
+    <ul>
+        @for (int i = 0; i < Navigation.Count; i++)
+        {
+            var index = i;
+            <li @onclick="() => OpenChapter(index)">@Navigation[i].Title
+            </li>
+            @if (Navigation[i].NestedItems != null && Navigation[i].NestedItems.Count > 0)
+            {
+                <EPubNavigation Navigation="@Navigation[i].NestedItems" Level="@(Level + $",{i}")" />
+            }
+        }
+    </ul>
+}
+@code {
+    [Parameter] public List<EpubNavigationItem>? Navigation { get; set; }
+    [Parameter] public string Level { get; set; } = "0";
+
+    @* [Parameter] public EventCallback<EpubNavigationItem> OnNavigation { get; set; } *@
+
+
+    private async Task OpenChapter(int index)
+    {
+        var level = Level + $",{index}";
+        level = level.Substring(2); // remove 0, from the begining;
+        int[] levels = level.Split(",")
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+
+        var position = new Position(levels, 0);
+        navService.SetPosition(position);
+        @* NavManager.NavigateTo(NavManager.Uri + nav.Title); *@
+        @* await OnNavigation.InvokeAsync(nav); *@
+    }
+}

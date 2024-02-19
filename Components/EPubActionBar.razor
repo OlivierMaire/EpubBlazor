@@ -1,0 +1,10 @@
+<div>
+    <div>Menu</div>
+    <div>@Book.Title - @Book.Author</div>
+    <div>Settings</div>
+
+</div>
+
+@code {
+    [Parameter] public EpubBook? Book { get; set; }
+}
