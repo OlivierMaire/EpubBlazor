@@ -1,34 +1,68 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject EPubNavigationService navService
+@inject EPubSettingsService SettingsService
+@inject EPubThemeService ThemeService
 
+<CascadingValue Value=false Name="UsePopoverProvider">
+    <MudThemeProvider Theme="_ePubTheme" />
+    <MudDialogProvider />
+</CascadingValue>
 
-@if (Book != null)
-{
-    <div class="epub-reader">
-  <EPubActionBar Book="@Book"/>
-    <div class="d-flex flex-row">
-        <div style="height: 100%;">
-            <EPubNavigation Navigation="Book.Navigation"  />
-        </div>
-       
-        <EPubContent Book="@Book" />
+<div>
+    @if (Book != null)
+    {
+        <MudLayout Class="epub-reader">
+            <EPubActionBar Book="@Book" OnDrawerToggle="ToggleDrawer" DrawerOpen="@open" />
+            <MudDrawer @bind-Open="@open" Elevation="1" DisableOverlay="true">
+                <MudDrawerHeader>
+                    <MudText Typo="Typo.h6">@AppName</MudText>
+                </MudDrawerHeader>
+                <MudNavMenu Margin="Margin.Dense">
+                    <EPubNavigation Navigation="Book.Navigation" />
+                </MudNavMenu>
 
-    </div>
-    </div>
-}
+            </MudDrawer>
+            <MudMainContent Class="epub-wrapper">
+                <EPubContent Book="@Book" />
+            </MudMainContent>
+        </MudLayout>
+    }
+</div>
+
 
 @code {
+    MudTheme _ePubTheme = EPubBlazorTheme.GetDefaultTheme();
 
     [Parameter] public string Url { get; set; } = default!;
+    [Parameter] public string AppName { get; set; } = default!;
     EpubBook? Book;
     @* EpubNavigationItem? CurrentChapter; *@
+
+    bool open = true;
+
+    Task ToggleDrawer()
+    {
+        open = !open;
+
+        return Task.CompletedTask;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         Console.WriteLine("EPubReader - OnInitializedAsync");
+     
+        SettingsService.SettingsChanged += SettingsChanged;
         Book = await GetBookFromUrlAsync(Url);
-        // display book
+     
 
-    
+
+
+    }
+
+    private void SettingsChanged(object? sender, Settings settings)
+    {
+        _ePubTheme = ThemeService.GetTheme(settings.SelectedTheme);
+        StateHasChanged();
     }
 
     private async Task<EpubBook> GetBookFromUrlAsync(string url)
@@ -45,7 +79,7 @@
     }
 
     @* private async Task Navigate(EpubNavigationItem nav)
-    {
-        CurrentChapter = nav;
-    } *@
+{
+CurrentChapter = nav;
+} *@
 }

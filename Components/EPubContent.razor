@@ -3,18 +3,13 @@
 
 @inject BlobManagerService BlobManagerService
 @inject EPubNavigationService navService
-@* @inject ExampleJsInterop jsInterop *@
+@inject EPubSettingsService SettingsService
+@inject EPubThemeService ThemeService
 @inject EPubJsInterop JsInterop
  
-<div class="flex-grow-1">
-content
-
+<div class="epub-content-container">
 @if (NavItem != null)
 {
-    <div class="calibre18"> test </div>
-    @* <div> CHAPTER : @NavItem.Title</div> *@
-    <div> Content</div>
-    <div class="epub-wrapper">
         <div class="buttons">
             <div @onclick="() => GoPrevious()" class="prev">
                 <div>&lt;</div>
@@ -23,16 +18,26 @@ content
                 <div>&gt;</div>
                 </div>
         </div>
+<div class="epub-content-view">
+
         <div @ref="Scroll" class="epub-scroll" style="@scrollContainerStyle">
 <div class="frame-wrapper"  style="@containerStyle">
     <iframe id="epub-iframe" @ref="IFrame" sandbox="allow-same-origin" enable-annotation="true" srcdoc="@DisplayContent" ></iframe>
-</div>    </div></div>  
+</div>    </div>
+</div>
+
 }   
 </div>
 
 
 
 @code {
+
+
+    int FontSize = 16;
+
+    string FontColor = "black";
+
 
       public EpubNavigationItem? NavItem { get; set; }
     [Parameter] public EpubBook? Book { get; set; }
@@ -41,7 +46,7 @@ content
     ElementReference Scroll {get;set;} = default!;
 
 
-    private Position Position {get;set;} = default!;
+    private Models.Position Position {get;set;} = default!;
     string DisplayContent = string.Empty;
     string blobPage = string.Empty;
 
@@ -56,7 +61,24 @@ System.Drawing.Size IFrameSize ;
     int ColumnWidth = 0;
     int ColumnGap = 0;
 
+
+
     IDocument Document = null!;
+
+        protected override void OnInitialized()
+        {
+            SettingsService.SettingsChanged += SettingsChanged;
+            base.OnInitialized();
+        }
+
+        private async void SettingsChanged(object? sender, Settings settings)
+        {
+            Console.WriteLine($"Settings Changed: {settings}");
+            FontSize = settings.FontSize;
+            FontColor = ThemeService.GetTheme(settings.SelectedTheme).Palette.TextPrimary.Value;
+            await Render();
+
+        }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -75,7 +97,7 @@ System.Drawing.Size IFrameSize ;
           }
         } 
 
-        public async void OnPositionChanged(object? sender, Position position)
+        public async void OnPositionChanged(object? sender, Models.Position position)
         {
             // get position 
             Console.WriteLine("Position Changed");
@@ -93,13 +115,18 @@ System.Drawing.Size IFrameSize ;
             this.Position = position;
 
                 // redraw
+            await Render();
+        }
+
+        }
+
+        public async Task Render()
+        {
             await LoadContent();
-                  await JsInterop.InitAsync(IFrame, Scroll);
+            await JsInterop.InitAsync(IFrame, Scroll);
             await UpdateContent();
             await UpdateContent2();
             await this.ScrollToPosition();
-        }
-
         }
 
 
@@ -208,7 +235,7 @@ private async Task FirstRenderCalculations()
 
     var body = Document.QuerySelector("body");
 
-var style = $"overflow: hidden; column-width: {ColumnWidth}px; column-gap: {ColumnGap}px; height: {IFrameSize.Height}px; width: {IframeWidth}px; column-fill: auto;box-sizing: border-box;max-width: inherit;margin: 0px !important;     padding-left: {ColumnGap/2}px !important;padding-right: {ColumnGap/2}px !important;";
+var style = $"overflow: hidden; column-width: {ColumnWidth}px; column-gap: {ColumnGap}px; height: {IFrameSize.Height}px; width: {IframeWidth}px; column-fill: auto;box-sizing: border-box;max-width: inherit;margin: 0px !important;     padding-left: {ColumnGap/2}px !important;padding-right: {ColumnGap/2}px !important; font-size: {FontSize}px; color: {FontColor};";
     body.SetAttribute("style",  style    );
 
 DisplayContent = Document.DocumentElement.OuterHtml;
@@ -222,11 +249,21 @@ StateHasChanged();
 
         private async Task UpdateContent2()
         {
+int scrollWidth = 0;
             await Task.Delay(25);
-
-            var scrollWidth = await JsInterop.GetScrollWidth();
+try{ 
+             scrollWidth= await JsInterop.GetScrollWidth();
             Console.WriteLine($"scrollwidth: {scrollWidth}");
 containerWidth = scrollWidth;
+}
+catch (Exception e)
+{
+            await Task.Delay(100);
+
+            scrollWidth = await JsInterop.GetScrollWidth();
+            Console.WriteLine($"scrollwidth: {scrollWidth}");
+containerWidth = scrollWidth;
+}
 
 var nbOfPages = Math.Round(scrollWidth  / pageStep);
 // make pg nb even 

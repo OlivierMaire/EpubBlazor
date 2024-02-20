@@ -38,15 +38,21 @@ public static class ServiceCollectionExtensions
             case ServiceLifetime.Singleton:
                 services.AddSingleton<BlobManagerService>();
                 services.AddSingleton<EPubNavigationService>();
+                services.AddSingleton<EPubSettingsService>();
+                services.AddSingleton<EPubThemeService>();
                 break;
             case ServiceLifetime.Scoped:
                 services.AddScoped<BlobManagerService>();
                 services.AddScoped<EPubNavigationService>();
+                services.AddScoped<EPubSettingsService>();
+                services.AddScoped<EPubThemeService>();
                 break;
             case ServiceLifetime.Transient:
             default:
                 services.AddTransient<BlobManagerService>();
                 services.AddTransient<EPubNavigationService>();
+                services.AddTransient<EPubSettingsService>();
+                services.AddTransient<EPubThemeService>();
                 break;
         }
 

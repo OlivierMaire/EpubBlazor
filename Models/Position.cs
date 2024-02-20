@@ -17,7 +17,7 @@ public record Position(int[] NavigationItemIndex, decimal ScrollPosition)
             return new Position(idx, pos);
         }
 
-        return default!;
+        return new Position([0], 0m);
     }
 
     public string ToQueryString()

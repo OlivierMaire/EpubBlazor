@@ -20,10 +20,15 @@ public class EPubNavigationService(NavigationManager navigationManager)
 
     public void SetPosition(Position position)
 {
-    var baseUri = navigationManager.ToAbsoluteUri(navigationManager.Uri).GetLeftPart(UriPartial.Path);
-    baseUri += $"?p={position.ToQueryString()}";
-    navigationManager.NavigateTo(baseUri);
+    string uri = GetUrlForPosition(position);
+    navigationManager.NavigateTo(uri);
     PositionChanged.Invoke(null,position);
+}
+
+public string GetUrlForPosition(Position position)
+{
+    var baseUri = navigationManager.ToAbsoluteUri(navigationManager.Uri).GetLeftPart(UriPartial.Path);
+    return baseUri + $"?p={position.ToQueryString()}";
 }
 
 public void GoToNext()

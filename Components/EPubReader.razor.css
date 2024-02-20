@@ -1,4 +1,8 @@
-.epub-reader {
+::deep .epub-reader {
   width: 100%;
+  height: 100svh;
+}
+::deep .epub-reader .epub-wrapper {
   height: 100%;
+  overflow: hidden;
 }

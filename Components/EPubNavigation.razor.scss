@@ -1,0 +1,9 @@
+::deep {
+    .mud-nav-item.active {
+        .mud-nav-link:not(.mud-nav-link-disabled) {
+            color: var(--mud-palette-primary-text);
+            background-color: var(--mud-palette-action-default-hover);
+            font-weight: 700;
+        }
+    }
+}

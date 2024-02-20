@@ -1,10 +1,37 @@
-<div>
-    <div>Menu</div>
-    <div>@Book.Title - @Book.Author</div>
-    <div>Settings</div>
+@inject IDialogService DialogService
 
-</div>
+
+<MudAppBar Elevation="1">
+    <MudIconButton Icon="@DrawerIcon" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+    <MudSpacer />
+    <MudText><strong>@Book?.Title</strong> &mdash; @Book?.Author &mdash; CHAPTER TITLE /* TODO */</MudText>
+    <MudSpacer />
+    <MudIconButton OnClick="OpenSettings" Icon="@Icons.Material.Outlined.SettingsApplications"  />
+</MudAppBar>
 
 @code {
     [Parameter] public EpubBook? Book { get; set; }
+
+    [Parameter] public bool DrawerOpen { get; set; }
+    [Parameter] public EventCallback OnDrawerToggle { get; set; }
+
+    private string DrawerIcon { get; set; } = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        DrawerIcon = DrawerOpen ? Icons.Material.Outlined.MenuOpen : Icons.Material.Outlined.Menu;
+        base.OnInitialized();
+    }
+
+    private void OpenSettings()
+    {
+        DialogService.Show<EPubSettings>("EPUB Reader Settings");
+    }
+
+    void ToggleDrawer()
+    {
+        DrawerOpen = !DrawerOpen;
+        DrawerIcon = DrawerOpen ? Icons.Material.Outlined.MenuOpen : Icons.Material.Outlined.Menu;
+        OnDrawerToggle.InvokeAsync();
+    }
 }

@@ -1,39 +1,88 @@
 @using VersOne.Epub;
+@using Microsoft.AspNetCore.Components.Routing;
 @inject NavigationManager NavManager
 @inject EPubNavigationService navService
-
+<div>
 @if (Navigation != null)
 {
-    <ul>
-        @for (int i = 0; i < Navigation.Count; i++)
+    @for (int i = 0; i < Navigation.Count; i++)
+    {
+        var index = i;
+        @if (Navigation[index].NestedItems != null && Navigation[index].NestedItems.Count > 0)
         {
-            var index = i;
-            <li @onclick="() => OpenChapter(index)">@Navigation[i].Title
-            </li>
-            @if (Navigation[i].NestedItems != null && Navigation[i].NestedItems.Count > 0)
-            {
-                <EPubNavigation Navigation="@Navigation[i].NestedItems" Level="@(Level + $",{i}")" />
-            }
+            <MudNavGroup Title="@Navigation[index].Title" OnClick="() => OpenChapter(index)">
+                <EPubNavigation Navigation="@Navigation[index].NestedItems" Level="@(Level + $",{index}")" />
+            </MudNavGroup>
         }
-    </ul>
+        else
+        {
+            <MudNavLink Match="NavLinkMatch.Prefix" Class="@IsCurrentChapter(index)" OnClick="() => OpenChapter(index)">
+                @Navigation[index].Title
+            </MudNavLink>
+        }
+    }
 }
+</div>
 @code {
     [Parameter] public List<EpubNavigationItem>? Navigation { get; set; }
     [Parameter] public string Level { get; set; } = "0";
 
-    @* [Parameter] public EventCallback<EpubNavigationItem> OnNavigation { get; set; } *@
+    private Models.Position? CurrentPosition {get;set;} =  null;
 
+       protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+          if (firstRender)
+          {
+            navService.PositionChanged += OnPositionChanged; 
+          }
+        } 
 
-    private async Task OpenChapter(int index)
+           public async void OnPositionChanged(object? sender, Models.Position position)
+        {
+            Console.WriteLine("Navigation - Position Changed");
+            CurrentPosition = position;
+            StateHasChanged();
+        }
+
+    private void OpenChapter(int index)
     {
         var level = Level + $",{index}";
         level = level.Substring(2); // remove 0, from the begining;
         int[] levels = level.Split(",")
         .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
 
-        var position = new Position(levels, 0);
+        var position = new Models.Position(levels, 0);
         navService.SetPosition(position);
-        @* NavManager.NavigateTo(NavManager.Uri + nav.Title); *@
-        @* await OnNavigation.InvokeAsync(nav); *@
+    }
+
+    private string GetHref(int index)
+    {
+        var level = Level + $",{index}";
+        level = level.Substring(2); // remove 0, from the begining;
+        int[] levels = level.Split(",")
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+
+        var position = new Models.Position(levels, 0);
+        var href = navService.GetUrlForPosition(position);
+        return href;
+
+    }
+
+    private string IsCurrentChapter(int index)
+    {
+         var level = Level + $",{index}";
+        level = level.Substring(2); // remove 0, from the begining;
+        int[] levels = level.Split(",")
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+
+        if (this.CurrentPosition == null)
+            CurrentPosition = navService.GetPosition();
+        if (CurrentPosition.NavigationItemIndex.SequenceEqual(levels))
+        {
+            return "active";
+        }
+
+        return string.Empty;
+
     }
 }
