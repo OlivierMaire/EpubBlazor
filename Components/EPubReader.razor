@@ -18,7 +18,7 @@
                     <MudText Typo="Typo.h6">@AppName</MudText>
                 </MudDrawerHeader>
                 <MudNavMenu Margin="Margin.Dense">
-                    <EPubNavigation Navigation="Book.Navigation" />
+                    <EPubNavigation Book="Book" Navigation="Book.Navigation" />
                 </MudNavMenu>
 
             </MudDrawer>
@@ -36,7 +36,6 @@
     [Parameter] public string Url { get; set; } = default!;
     [Parameter] public string AppName { get; set; } = default!;
     EpubBook? Book;
-    @* EpubNavigationItem? CurrentChapter; *@
 
     bool open = true;
 
@@ -53,6 +52,7 @@
      
         SettingsService.SettingsChanged += SettingsChanged;
         Book = await GetBookFromUrlAsync(Url);
+        navService.GenerateNavigationTree(Book);
      
 
 
@@ -78,8 +78,5 @@
         }
     }
 
-    @* private async Task Navigate(EpubNavigationItem nav)
-{
-CurrentChapter = nav;
-} *@
+
 }

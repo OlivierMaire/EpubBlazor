@@ -43,5 +43,5 @@
 }
 
 .mud-drawer-open-responsive-md-left.mud-drawer-left-clipped-never .epub-content-container .buttons .next {
-  right: calc(0px - var(--mud-drawer-width-left));
+  right: 0px;
 }

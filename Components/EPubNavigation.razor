@@ -10,20 +10,21 @@
         var index = i;
         @if (Navigation[index].NestedItems != null && Navigation[index].NestedItems.Count > 0)
         {
-            <MudNavGroup Title="@Navigation[index].Title" OnClick="() => OpenChapter(index)">
+            <MudNavGroup Expanded="true" Title="@Navigation[index].Title" OnClick="() => OpenChapter(index)">
                 <EPubNavigation Navigation="@Navigation[index].NestedItems" Level="@(Level + $",{index}")" />
             </MudNavGroup>
         }
         else
         {
             <MudNavLink Match="NavLinkMatch.Prefix" Class="@IsCurrentChapter(index)" OnClick="() => OpenChapter(index)">
-                @Navigation[index].Title
+                @Navigation[index].Title 
             </MudNavLink>
         }
     }
 }
 </div>
 @code {
+    [Parameter] public EpubBook? Book { get; set; }
     [Parameter] public List<EpubNavigationItem>? Navigation { get; set; }
     [Parameter] public string Level { get; set; } = "0";
 
@@ -46,23 +47,31 @@
 
     private void OpenChapter(int index)
     {
-        var level = Level + $",{index}";
+        @* var level = Level + $",{index}";
         level = level.Substring(2); // remove 0, from the begining;
         int[] levels = level.Split(",")
-        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray(); *@
 
-        var position = new Models.Position(levels, 0);
+        // find position in read order
+        var readingOrder = Book.ReadingOrder.FirstOrDefault(ro => ro.Key == Navigation[index].Link.ContentFileUrl);
+        var roIndex = Book.ReadingOrder.IndexOf(readingOrder);
+
+        var position = new Models.Position(Level, roIndex, 0);
         navService.SetPosition(position);
     }
 
     private string GetHref(int index)
     {
-        var level = Level + $",{index}";
+        @* var level = Level + $",{index}";
         level = level.Substring(2); // remove 0, from the begining;
         int[] levels = level.Split(",")
-        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray(); *@
 
-        var position = new Models.Position(levels, 0);
+        // find position in read order
+        var readingOrder = Book.ReadingOrder.FirstOrDefault(ro => ro.Key == Navigation[index].Link.ContentFileUrl);
+        var roIndex = Book.ReadingOrder.IndexOf(readingOrder);
+
+        var position = new Models.Position(Level, roIndex, 0);
         var href = navService.GetUrlForPosition(position);
         return href;
 
@@ -70,14 +79,18 @@
 
     private string IsCurrentChapter(int index)
     {
+
+      
          var level = Level + $",{index}";
         level = level.Substring(2); // remove 0, from the begining;
-        int[] levels = level.Split(",")
-        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray();
+
+
+        @* int[] levels = level.Split(",")
+        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray(); *@
 
         if (this.CurrentPosition == null)
             CurrentPosition = navService.GetPosition();
-        if (CurrentPosition.NavigationItemIndex.SequenceEqual(levels))
+        if (CurrentPosition.NavigationLevel == level ) //.NavigationItemIndex.SequenceEqual(levels))
         {
             return "active";
         }
