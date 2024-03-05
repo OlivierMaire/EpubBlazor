@@ -6,11 +6,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <PackageId>EPubBlazor</PackageId>
-    <Version>1.0.1</Version>
+    <Version>0.0.2-alpha</Version>
     <Authors>Olivier Maire</Authors>
     <Company>Olivier Maire</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>Epub;Blazor;</PackageTags>
 
-      <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
 
@@ -28,5 +31,9 @@
     <PackageReference Include="SoloX.BlazorJsBlob" Version="1.0.2" />
     <PackageReference Include="VersOne.Epub" Version="3.3.1" />
   </ItemGroup>
+
+      <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
 
 </Project>

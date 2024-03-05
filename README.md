@@ -1,2 +1,2 @@
-# EpubBlazor
-Pure Blazor Component to Read and Display EPUB
+# EPubBlazor
+(Mostly) Pure Blazor Component to Read and Display EPUB
