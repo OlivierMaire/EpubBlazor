@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="1.1.0" />
+    <PackageReference Include="AngleSharp.Xml" Version="1.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />

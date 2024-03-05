@@ -1,5 +1,7 @@
 @using AngleSharp
+@using AngleSharp.Xml
 @using AngleSharp.Dom
+@using AngleSharp.Text
 
 @inject BlobManagerService BlobManagerService
 @inject EPubNavigationService navService
@@ -8,49 +10,27 @@
 @inject EPubJsInterop JsInterop
  
 <div class="epub-content-container">
-
-
-
-@* @if (CurrentReadingOrder != null) *@
-@* { *@
-
-
-        <div class="buttons">
-            <div @onclick="() => GoPrevious()" class="prev">
-                <div>&lt;</div>
-                </div>
-            <div  @onclick="() => GoNext()" class="next">
-                <div>&gt;</div>
-                </div>
-        </div>
-<div class="epub-content-view">
-
+    <div class="buttons">
+        <div @onclick="() => GoPrevious()" class="prev"><div>&lt;</div></div>
+        <div @onclick="() => GoNext()" class="next"><div>&gt;</div></div>
+    </div>
+    <div class="epub-content-view">
         <div @ref="Scroll" class="epub-scroll" style="@scrollContainerStyle">
-<div class="frame-wrapper"  style="@containerStyle">
-    <iframe id="epub-iframe" @ref="IFrame" sandbox="allow-same-origin" 
-    enable-annotation="true" srcdoc="@DisplayContent" style="width: 100%" ></iframe>
-</div>    </div>
+            <div class="frame-wrapper"  style="@containerStyle">
+                <iframe id="epub-iframe" @ref="IFrame" sandbox="allow-same-origin" 
+                enable-annotation="true" srcdoc="@DisplayContent" style="width: 100%" ></iframe>
+            </div>      
+        </div>
+    </div>
 </div>
-
-@* }    *@
-</div>
-
-
 
 @code {
-
-
     int FontSize = 16;
-
     string FontColor = "black";
-
-
-      @* public EpubNavigationItem? NavItem { get; set; } *@
     [Parameter] public EpubBook? Book { get; set; }
 
     ElementReference IFrame {get;set;} = default!;
     ElementReference Scroll {get;set;} = default!;
-
 
     private Models.Position Position {get;set;} = default!;
     string DisplayContent = string.Empty;
@@ -63,13 +43,11 @@
     string containerStyle => containerWidth > 0 ? $"width: {containerWidth}px;" : "";
     string scrollContainerStyle => (IframeWidth > 0 ? $"width: {IframeWidth}px;" : "") + " overflow:hidden; /*overflow-x: scroll;*/ /*padding:1em;*/";
 
-System.Drawing.Size IFrameSize ;
+    System.Drawing.Size IFrameSize ;
     int ColumnWidth = 0;
     int ColumnGap = 0;
 
     EpubLocalTextContentFile? CurrentReadingOrder {get;set;}
-
-
 
     IDocument Document = null!;
 
@@ -111,161 +89,76 @@ System.Drawing.Size IFrameSize ;
             Console.WriteLine("Position Changed");
             Console.WriteLine(position);
             
-            @* if (this.Position.NavigationItemIndex == position.NavigationItemIndex) *@
-            if (this.Position.ReadOrder == position.ReadOrder)
-            {
-                // just scroll
+        @* if (this.Position.NavigationItemIndex == position.NavigationItemIndex) *@
+        if (this.Position.ReadOrder == position.ReadOrder)
+        {
+            // just scroll
             this.Position = position;
             await this.ScrollToPosition();
-            }
-            else
-            {
+        }
+        else
+        {
 
             this.Position = position;
             Console.WriteLine("Start Redraw");
 
-                // redraw
+            // redraw
             await Render();
         }
 
-        }
+    }
 
-        public async Task Render()
-        {
-            await LoadContent();
-            await JsInterop.InitAsync(IFrame, Scroll);
-            await UpdateContent();
-            await UpdateContent2();
-            await this.ScrollToPosition();
-        }
-
-
-       
-       
-
-    @* private void GetNavItem()
+    public async Task Render()
     {
-        var navList = Book.Navigation;
-        EpubNavigationItem? nav = null;
+        await LoadContent();
+        await JsInterop.InitAsync(IFrame, Scroll);
+        await UpdateContent();
+        await UpdateContent2();
+        await this.ScrollToPosition();
+    }
 
-        foreach (var pos in Position.NavigationItemIndex)
-        {
-         nav = navList[pos];
-         navList = nav.NestedItems;
-        }
-
-        NavItem = nav;
-    } *@
 
     private void GetReadingContent()
     {
         var readingOrder = Book.ReadingOrder;
         CurrentReadingOrder = readingOrder[Position.ReadOrder];
-      
+
 
     }
 
-        private async Task LoadContent(){
- @* GetNavItem();  *@
-  GetReadingContent();
+    private string HtmlCleanup(string source)
+    {
+        // fix <a /> tags
+        source = System.Text.RegularExpressions.Regex.Replace(source, @"(<a( ?.*)\/>)", @"<a $2></a>");
+        return source;
+    }
 
-//Use the default configuration for AngleSharp
+    private async Task LoadContent(){
+        GetReadingContent();
+
+        //Use the default configuration for AngleSharp
         IConfiguration config = Configuration.Default;
-
         //Create a new context for evaluating webpages with the given config
         IBrowsingContext context = BrowsingContext.New(config);
-
         //Source to be parsed
-        @* string source = NavItem?.HtmlContentFile?.Content ?? string.Empty; *@
         string source = CurrentReadingOrder?.Content ?? string.Empty;
- Console.WriteLine(source);
+        source = HtmlCleanup(source);
         //Create a virtual request to specify the document to load (here from our fixed string)
         Document = await context.OpenAsync(req => req.Content(source));
 
-        @* string documentPath = NavItem?.Link?.ContentFilePath ?? string.Empty; *@
         string documentPath = CurrentReadingOrder?.FilePath ?? string.Empty;
-                Console.WriteLine($"1 - DocumentPath: {documentPath}");
-        if (documentPath.LastIndexOf('/') > 0)
-            documentPath = documentPath.Remove(documentPath.LastIndexOf('/')+1);
-        else
-            documentPath = "/";
-        Console.WriteLine($"2 - DocumentPath: {documentPath}");
+        documentPath = documentPath.LastIndexOf('/') > 0 ? 
+            documentPath.Remove(documentPath.LastIndexOf('/')+1) : "/";
+        
+        await ReplaceTags("link", "href", documentPath, Book.Content.Css );
+        await ReplaceTags("img", "src", documentPath, Book.Content.Images );
+        await ReplaceTags("image", "href", documentPath , Book.Content.Cover );
 
- 
-await ReplaceTags("link", "href", documentPath, Book.Content.Css );
-await ReplaceTags("img", "src", documentPath, Book.Content.Images );
-await ReplaceTags("image", "href", documentPath , Book.Content.Cover );
- 
+        DisplayContent = source;
+        StateHasChanged();
 
-@* await jsInterop.Prompt("hello"); *@
-        // inject javascript
-
-        @* var body = document.QuerySelector("body");
-        var script = document.CreateElement("script");
-        script.SetAttribute("src", "_content/EPubBlazor/Components/EPubCOntent.razor.js");
-        body.AppendChild(script); *@
-
-DisplayContent = Document.DocumentElement.OuterHtml;
-StateHasChanged();
- 
-
-        }
-@* 
-private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubContentCollection<EpubLocalTextContentFile, EpubRemoteTextContentFile> coll)
-{
-    if (Document == null || Book == null)
-    return;
-        var elements = Document.QuerySelectorAll(elem);
-        Console.WriteLine($"{elements.Length} {elem} found");
-         foreach (var e in elements)
-        {
-            if (e != null && e.Attributes != null && 
-            e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
-            {
-                var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                Console.WriteLine($"1 - Looking for: {url}");
-                 url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                Console.WriteLine($"2 - Looking for: {url}");
-
-                if(coll.ContainsLocalFileWithFilePath(url))
-                {
-                    var blob = await BlobManagerService.AddBlobAsync(url, 
-                    coll.GetLocalFileByFilePath(url).Content, 
-                    coll.GetLocalFileByFilePath(url).ContentMimeType );
-                    e.Attributes[attribute]!.Value =  blob.Uri.ToString() ; 
-                }
-            }
-        }
-}
-
-
-private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubContentCollection<EpubLocalByteContentFile, EpubRemoteByteContentFile> coll)
-{
-    if (Document == null || Book == null)
-    return;
-        var elements = Document.QuerySelectorAll(elem);
-        Console.WriteLine($"{elements.Length} {elem} found");
-         foreach (var e in elements)
-        {
-            if (e != null && e.Attributes != null && 
-            e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
-            {
-                var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                Console.WriteLine($"1 - Looking for: {url}");
-                 url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                Console.WriteLine($"2 - Looking for: {url}");
-
-                if(coll.ContainsLocalFileWithFilePath(url))
-                {
-                    var blob = await BlobManagerService.AddBlobAsync(url, 
-                    coll.GetLocalFileByFilePath(url).Content, 
-                    coll.GetLocalFileByFilePath(url).ContentMimeType );
-                    e.Attributes[attribute]!.Value =  blob.Uri.ToString() ; 
-                }
-            }
-        }
-} *@
-
+    }
+     
 private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubLocalByteContentFile cover)
 {
     if (Document == null || Book == null)
@@ -278,9 +171,9 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                Console.WriteLine($"1 - Looking for: {url}");
+                @* Console.WriteLine($"1 - Looking for: {url}"); *@
                  url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                Console.WriteLine($"2 - Looking for: {url}");
+                @* Console.WriteLine($"2 - Looking for: {url}"); *@
 
                 if(Book.Content.AllFiles.ContainsLocalFileWithFilePath(url))
                 {
@@ -293,22 +186,21 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
         }
 }
 
-
 private async Task ReplaceTags(string elem, string attribute, string documentPath, dynamic coll)
 {
     if (Document == null || Book == null)
     return;
         var elements = Document.QuerySelectorAll(elem);
-        Console.WriteLine($"{elements.Length} {elem} found");
+        @* Console.WriteLine($"{elements.Length} {elem} found"); *@
          foreach (var e in elements)
         {
             if (e != null && e.Attributes != null && 
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                Console.WriteLine($"1 - Looking for: {url}");
+                @* Console.WriteLine($"1 - Looking for: {url}"); *@
                  url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                Console.WriteLine($"2 - Looking for: {url}");
+                @* Console.WriteLine($"2 - Looking for: {url}"); *@
 
                 if(coll.ContainsLocalFileWithFilePath(url))
                 {
