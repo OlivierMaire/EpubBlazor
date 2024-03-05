@@ -1,0 +1,47 @@
+.epub-content-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+.epub-content-container .epub-content-view {
+  padding: 3rem 10%;
+  width: 100%;
+  height: 100%;
+}
+.epub-content-container .epub-content-view .epub-scroll {
+  height: 100%;
+}
+.epub-content-container .epub-content-view .epub-scroll .frame-wrapper {
+  height: 100%;
+}
+.epub-content-container .buttons .prev,
+.epub-content-container .buttons .next {
+  position: absolute;
+  height: 100%;
+  width: 10%;
+  transition: background-color 0.3s linear;
+}
+.epub-content-container .buttons .prev:hover,
+.epub-content-container .buttons .next:hover {
+  background-color: rgba(255, 255, 255, 0.6666666667);
+}
+.epub-content-container .buttons .prev {
+  left: 0;
+}
+.epub-content-container .buttons .prev div {
+  position: absolute;
+  top: 50%;
+  right: 50%;
+}
+.epub-content-container .buttons .next {
+  right: 0;
+}
+.epub-content-container .buttons .next div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+.mud-drawer-open-responsive-md-left.mud-drawer-left-clipped-never .epub-content-container .buttons .next {
+  right: 0px;
+}

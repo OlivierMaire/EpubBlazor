@@ -1,0 +1,82 @@
+@inject IHttpClientFactory HttpClientFactory
+@inject EPubNavigationService navService
+@inject EPubSettingsService SettingsService
+@inject EPubThemeService ThemeService
+
+<CascadingValue Value=false Name="UsePopoverProvider">
+    <MudThemeProvider Theme="_ePubTheme" />
+    <MudDialogProvider />
+</CascadingValue>
+
+<div>
+    @if (Book != null)
+    {
+        <MudLayout Class="epub-reader">
+            <EPubActionBar Book="@Book" OnDrawerToggle="ToggleDrawer" DrawerOpen="@open" />
+            <MudDrawer @bind-Open="@open" Elevation="1" DisableOverlay="true">
+                <MudDrawerHeader>
+                    <MudText Typo="Typo.h6">@AppName</MudText>
+                </MudDrawerHeader>
+                <MudNavMenu Margin="Margin.Dense">
+                    <EPubNavigation Book="Book" Navigation="Book.Navigation" />
+                </MudNavMenu>
+
+            </MudDrawer>
+            <MudMainContent Class="epub-wrapper">
+                <EPubContent Book="@Book" />
+            </MudMainContent>
+        </MudLayout>
+    }
+</div>
+
+
+@code {
+    MudTheme _ePubTheme = EPubBlazorTheme.GetDefaultTheme();
+
+    [Parameter] public string Url { get; set; } = default!;
+    [Parameter] public string AppName { get; set; } = default!;
+    EpubBook? Book;
+
+    bool open = true;
+
+    Task ToggleDrawer()
+    {
+        open = !open;
+
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("EPubReader - OnInitializedAsync");
+     
+        SettingsService.SettingsChanged += SettingsChanged;
+        Book = await GetBookFromUrlAsync(Url);
+        navService.GenerateNavigationTree(Book);
+     
+
+
+
+    }
+
+    private void SettingsChanged(object? sender, Settings settings)
+    {
+        _ePubTheme = ThemeService.GetTheme(settings.SelectedTheme);
+        StateHasChanged();
+    }
+
+    private async Task<EpubBook> GetBookFromUrlAsync(string url)
+    {
+        using (var httpClient = HttpClientFactory.CreateClient())
+        {
+            using (var stream = await httpClient.GetStreamAsync(url))
+            {
+                var book = await EpubReader.ReadBookAsync(stream);
+                return book;
+
+            }
+        }
+    }
+
+
+}

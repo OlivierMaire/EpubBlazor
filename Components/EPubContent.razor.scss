@@ -1,0 +1,70 @@
+.epub-content-container {
+    height: 100%;
+    width: 100%;
+    position: relative;
+
+    .epub-content-view {
+        padding: 3rem 10%;
+
+        width: 100%;
+        height: 100%;
+
+        .epub-scroll {
+            height: 100%;
+
+            .frame-wrapper {
+                height: 100%;
+            }
+        }
+    }
+
+    .buttons {
+
+        .prev,
+        .next {
+            position: absolute;
+            height: 100%;
+            width: 10%;
+            transition: background-color .3s linear;
+
+            &:hover {
+                background-color: #FFFFFFAA;
+            }
+
+
+        }
+
+        .prev {
+            left: 0;
+
+            div {
+                position: absolute;
+                top: 50%;
+                right: 50%;
+            }
+        }
+
+        .next {
+            right: 0;
+
+            div {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+            }
+        }
+    }
+
+}
+
+.mud-drawer-open-responsive-md-left.mud-drawer-left-clipped-never {
+    .epub-content-container {
+        .buttons {
+            .next {
+                // right: calc(0px - var(--mud-drawer-width-left));
+                right: calc(0px);
+
+            }
+        }
+    }
+}

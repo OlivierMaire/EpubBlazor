@@ -1,0 +1,33 @@
+::deep {
+    .epub-reader {
+        // position: absolute;
+        // top: 0;
+        // left: 0;
+        width: 100%;
+        height: 100svh;
+
+
+        .epub-wrapper {
+            //         position: relative;
+            //         height: calc(100% - var(--mud-appbar-height) - var(--mud-appbar-height)/8);
+
+
+            // @media (min-width: 0px) and (orientation: landscape){
+            //     height: calc(100% - var(--mud-appbar-height) - var(--mud-appbar-height)/4);
+
+            // }
+
+            // @media (min-width: 600px)
+            // {
+            //         height: calc(100% - var(--mud-appbar-height));
+            // }
+            //     }
+
+            height: 100%;
+            overflow: hidden;
+
+        }
+
+    }
+}
+ 

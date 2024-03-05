@@ -1,0 +1,70 @@
+@inject EPubSettingsService SettingsService
+@inject EPubThemeService ThemeService
+<div>
+<MudDialog Class="epub-settings">
+    <DialogContent>
+        @if (Settings != null)
+        {
+            <MudText><strong>Theme: </strong></MudText>
+            <MudChipSet SelectedChip="selectedChip" SelectedChipChanged="ChipSelected" Filter="true" Mandatory="true">
+
+                @foreach (var theme in Themes)
+                {
+                    var style = $"background-color: {theme.BgColor}; color: {theme.Color}";
+                    <MudChip Style="@style" Text="@theme.Name" Default="@(theme.Name == Settings.SelectedTheme)">@theme.Name</MudChip>
+                }
+            </MudChipSet>
+
+
+            <MudSlider @bind-Value="@Settings.FontSize" Step="2" Min="10" Max="60" Size="Size.Medium"
+                Variant="Variant.Filled">
+                <strong>Font Size:</strong> @Settings.FontSize px
+            </MudSlider>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+</div>
+
+@code {
+
+    private Settings Settings { get; set; } = null!;
+    private List<ThemeDisplay> Themes { get; set; } = [];
+
+    private MudChip selectedChip;
+
+    private DialogOptions Options = new DialogOptions
+        {
+            ClassBackground = "settings-bg",
+            CloseButton = true
+        };
+
+    protected override void OnInitialized()
+    {
+
+        // get current settings
+        Settings = SettingsService.GetSettings();
+
+        // get theme list
+        Themes = ThemeService.GetAvailableThemes();
+
+        base.OnInitialized();
+    }
+
+    private void ChipSelected(MudChip chip)
+    {
+        Console.WriteLine("chip selected " + chip.Text);
+        selectedChip = chip;
+        Settings.SelectedTheme = chip.Text;
+    }
+
+private void Save()
+{ 
+    SettingsService.SetSettings(Settings);
+}
+
+
+
+}
