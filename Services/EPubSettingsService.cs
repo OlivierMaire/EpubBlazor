@@ -7,7 +7,7 @@ public class EPubSettingsService
 
     private Settings Settings { get; set; } = new();
 
-    public event EventHandler<Settings> SettingsChanged;
+    public event Action<Settings>? SettingsChanged;
 
 
     public Settings GetSettings()
@@ -19,7 +19,7 @@ public class EPubSettingsService
     public void SetSettings(Settings settings)
     {
         Settings = settings;
-        SettingsChanged.Invoke(null, Settings);
+        SettingsChanged?.Invoke(Settings);
     }
 
 }

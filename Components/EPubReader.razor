@@ -48,18 +48,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Console.WriteLine("EPubReader - OnInitializedAsync");
-     
         SettingsService.SettingsChanged += SettingsChanged;
         Book = await GetBookFromUrlAsync(Url);
         navService.GenerateNavigationTree(Book);
-     
-
-
-
     }
 
-    private void SettingsChanged(object? sender, Settings settings)
+    private void SettingsChanged(Settings settings)
     {
         _ePubTheme = ThemeService.GetTheme(settings.SelectedTheme);
         StateHasChanged();

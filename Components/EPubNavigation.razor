@@ -1,5 +1,7 @@
-@using VersOne.Epub;
-@using Microsoft.AspNetCore.Components.Routing;
+@using VersOne.Epub
+@using Microsoft.AspNetCore.Components.Routing
+@using MudBlazor
+@using EPubBlazor.Services
 @inject NavigationManager NavManager
 @inject EPubNavigationService navService
 <div>
@@ -30,7 +32,7 @@
 
     private Models.Position? CurrentPosition {get;set;} =  null;
 
-       protected override async Task OnAfterRenderAsync(bool firstRender)
+       protected override void OnAfterRender(bool firstRender)
     {
           if (firstRender)
           {
@@ -38,43 +40,43 @@
           }
         } 
 
-           public async void OnPositionChanged(object? sender, Models.Position position)
+           public void OnPositionChanged(Models.Position position)
         {
-            Console.WriteLine("Navigation - Position Changed");
             CurrentPosition = position;
             StateHasChanged();
         }
 
     private void OpenChapter(int index)
     {
-        @* var level = Level + $",{index}";
-        level = level.Substring(2); // remove 0, from the begining;
-        int[] levels = level.Split(",")
-        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray(); *@
-
-        // find position in read order
-        var readingOrder = Book.ReadingOrder.FirstOrDefault(ro => ro.Key == Navigation[index].Link.ContentFileUrl);
-        var roIndex = Book.ReadingOrder.IndexOf(readingOrder);
-
-        var position = new Models.Position(Level, roIndex, 0);
-        navService.SetPosition(position);
+        var position = GetPosition(index);
+        if (position != null)
+            navService.SetPosition(position);
     }
 
     private string GetHref(int index)
     {
-        @* var level = Level + $",{index}";
-        level = level.Substring(2); // remove 0, from the begining;
-        int[] levels = level.Split(",")
-        .Select(c => { int.TryParse(c, System.Globalization.CultureInfo.InvariantCulture, out var id); return id; }).ToArray(); *@
+        var position = GetPosition(index);
+        if (position != null)
+        {
+            var href = navService.GetUrlForPosition(position);
+            return href ?? string.Empty;
+        }
+        return string.Empty;
+    }
+
+    private Models.Position? GetPosition(int index)
+    {
+        if (Book == null || Navigation == null)
+            return null;
 
         // find position in read order
-        var readingOrder = Book.ReadingOrder.FirstOrDefault(ro => ro.Key == Navigation[index].Link.ContentFileUrl);
+        var readingOrder = Book.ReadingOrder.FirstOrDefault(ro => ro.Key == Navigation[index].Link?.ContentFileUrl);
+        if (readingOrder == null)
+            return null;
+
         var roIndex = Book.ReadingOrder.IndexOf(readingOrder);
-
         var position = new Models.Position(Level, roIndex, 0);
-        var href = navService.GetUrlForPosition(position);
-        return href;
-
+        return position;
     }
 
     private string IsCurrentChapter(int index)

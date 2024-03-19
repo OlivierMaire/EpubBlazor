@@ -2,6 +2,8 @@
 @using AngleSharp.Xml
 @using AngleSharp.Dom
 @using AngleSharp.Text
+@using EPubBlazor.Services
+@using VersOne.Epub
 
 @inject BlobManagerService BlobManagerService
 @inject EPubNavigationService navService
@@ -57,7 +59,7 @@
             base.OnInitialized();
         }
 
-        private async void SettingsChanged(object? sender, Settings settings)
+        private async void SettingsChanged(Settings settings)
         {
             Console.WriteLine($"Settings Changed: {settings}");
             FontSize = settings.FontSize;
@@ -76,43 +78,39 @@
             await LoadContent();
             await JsInterop.InitAsync(IFrame, Scroll);
             await FirstRenderCalculations();
-            await UpdateContent();
+             UpdateContent();
             await UpdateContent2();
             
             await this.ScrollToPosition();
           }
         } 
 
-        public async void OnPositionChanged(object? sender, Models.Position position)
+        public async void OnPositionChanged(  Models.Position position)
         {
             // get position 
-            Console.WriteLine("Position Changed");
             Console.WriteLine(position);
             
-        @* if (this.Position.NavigationItemIndex == position.NavigationItemIndex) *@
-        if (this.Position.ReadOrder == position.ReadOrder)
-        {
-            // just scroll
-            this.Position = position;
-            await this.ScrollToPosition();
+            if (this.Position.ReadOrder == position.ReadOrder)
+            {
+                // just scroll
+                this.Position = position;
+                await this.ScrollToPosition();
+            }
+            else
+            {
+                this.Position = position;
+
+                // redraw
+                await Render();
+            }
+
         }
-        else
-        {
-
-            this.Position = position;
-            Console.WriteLine("Start Redraw");
-
-            // redraw
-            await Render();
-        }
-
-    }
 
     public async Task Render()
     {
         await LoadContent();
         await JsInterop.InitAsync(IFrame, Scroll);
-        await UpdateContent();
+         UpdateContent();
         await UpdateContent2();
         await this.ScrollToPosition();
     }
@@ -120,10 +118,9 @@
 
     private void GetReadingContent()
     {
-        var readingOrder = Book.ReadingOrder;
-        CurrentReadingOrder = readingOrder[Position.ReadOrder];
-
-
+        var readingOrder = Book?.ReadingOrder;
+        if (readingOrder != null)
+            CurrentReadingOrder = readingOrder[Position.ReadOrder];
     }
 
     private string HtmlCleanup(string source)
@@ -150,18 +147,18 @@
         documentPath = documentPath.LastIndexOf('/') > 0 ? 
             documentPath.Remove(documentPath.LastIndexOf('/')+1) : "/";
         
-        await ReplaceTags("link", "href", documentPath, Book.Content.Css );
-        await ReplaceTags("img", "src", documentPath, Book.Content.Images );
-        await ReplaceTags("image", "href", documentPath , Book.Content.Cover );
+        await ReplaceTags("link", "href", documentPath, Book?.Content?.Css );
+        await ReplaceTags("img", "src", documentPath, Book?.Content?.Images );
+        await ReplaceTags("image", "href", documentPath , Book?.Content?.Cover );
 
         DisplayContent = source;
         StateHasChanged();
 
     }
      
-private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubLocalByteContentFile cover)
+private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubLocalByteContentFile? cover)
 {
-    if (Document == null || Book == null)
+    if (Document == null || Book == null || cover == null)
     return;
         var elements = Document.QuerySelectorAll(elem);
         Console.WriteLine($"{elements.Length} {elem} found");
@@ -186,27 +183,27 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
         }
 }
 
-private async Task ReplaceTags(string elem, string attribute, string documentPath, dynamic coll)
+private async Task ReplaceTags(string elem, string attribute, string documentPath, dynamic? coll)
 {
-    if (Document == null || Book == null)
+    if (Document == null || Book == null || coll == null)
     return;
-        var elements = Document.QuerySelectorAll(elem);
-        @* Console.WriteLine($"{elements.Length} {elem} found"); *@
+        var elements = Document?.QuerySelectorAll(elem);
+    if (elements == null)
+        return;
+
          foreach (var e in elements)
         {
             if (e != null && e.Attributes != null && 
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                @* Console.WriteLine($"1 - Looking for: {url}"); *@
                  url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                @* Console.WriteLine($"2 - Looking for: {url}"); *@
 
-                if(coll.ContainsLocalFileWithFilePath(url))
+                if (coll?.ContainsLocalFileWithFilePath(url))
                 {
                     SoloX.BlazorJsBlob.IBlob blob = await BlobManagerService.AddBlobAsync(url, 
-                    coll.GetLocalFileByFilePath(url).Content, 
-                    coll.GetLocalFileByFilePath(url).ContentMimeType );
+                    coll?.GetLocalFileByFilePath(url).Content, 
+                    coll?.GetLocalFileByFilePath(url).ContentMimeType );
                     e.Attributes[attribute]!.Value =  blob.Uri.ToString() ; 
                 }
             }
@@ -236,25 +233,16 @@ private async Task FirstRenderCalculations()
 }
 
 
-        private async Task UpdateContent()
-        {
+    private void UpdateContent()
+    {
+        // update body css rules;
+        var body = Document.QuerySelector("body");
+        var style = $"overflow: hidden; column-width: {ColumnWidth}px; column-gap: {ColumnGap}px; height: {IFrameSize.Height}px; width: {IframeWidth}px; column-fill: auto;box-sizing: border-box;max-width: inherit;margin: 0px !important;     padding-left: {ColumnGap/2}px !important;padding-right: {ColumnGap/2}px !important; font-size: {FontSize}px; color: {FontColor};";
+        body?.SetAttribute("style",  style    );
 
-      
-    // update body css rules;
-
-    var body = Document.QuerySelector("body");
-
-var style = $"overflow: hidden; column-width: {ColumnWidth}px; column-gap: {ColumnGap}px; height: {IFrameSize.Height}px; width: {IframeWidth}px; column-fill: auto;box-sizing: border-box;max-width: inherit;margin: 0px !important;     padding-left: {ColumnGap/2}px !important;padding-right: {ColumnGap/2}px !important; font-size: {FontSize}px; color: {FontColor};";
-    body.SetAttribute("style",  style    );
-
-DisplayContent = Document.DocumentElement.OuterHtml;
-
-Console.WriteLine("Update COntent");
-StateHasChanged();
-
-
-
-        }
+        DisplayContent = Document.DocumentElement.OuterHtml;
+        StateHasChanged();
+    }
 
         private async Task UpdateContent2()
         {
@@ -262,15 +250,13 @@ int scrollWidth = 0;
             await Task.Delay(25);
 try{ 
              scrollWidth= await JsInterop.GetScrollWidth();
-            Console.WriteLine($"scrollwidth: {scrollWidth}");
 containerWidth = scrollWidth;
 }
-catch (Exception e)
+catch (Exception)
 {
             await Task.Delay(100);
 
             scrollWidth = await JsInterop.GetScrollWidth();
-            Console.WriteLine($"scrollwidth: {scrollWidth}");
 containerWidth = scrollWidth;
 }
 
@@ -287,7 +273,7 @@ StateHasChanged();
         }
 
 
-        private async Task  GoPrevious()
+        private void  GoPrevious()
 
         {
 Console.WriteLine("go previous");
@@ -312,7 +298,7 @@ navService.SetPosition(Position);
         }
 
         
-        private async Task GoNext()
+        private void GoNext()
 
         {
 Console.WriteLine("go next");

@@ -11,7 +11,7 @@ public class EPubNavigationService(NavigationManager navigationManager)
 {
     private readonly NavigationManager navigationManager = navigationManager;
 
-    public event EventHandler<Position> PositionChanged;
+    public event Action<Position>? PositionChanged;
 
     List<ChapterReadingOrderItem> NavigationTree { get; set; } = [];
     Dictionary<int, string> PageToLevelDictionary = [];
@@ -29,7 +29,7 @@ public class EPubNavigationService(NavigationManager navigationManager)
     {
         string uri = GetUrlForPosition(position);
         navigationManager.NavigateTo(uri);
-        PositionChanged.Invoke(null, position);
+        PositionChanged?.Invoke(position);
     }
 
     public string GetUrlForPosition(Position position)
@@ -43,7 +43,7 @@ public class EPubNavigationService(NavigationManager navigationManager)
         var pos = GetPosition();
         // pos.NavigationItemIndex[pos.NavigationItemIndex.Length - 1] += 1;
         pos.ReadOrder += 1;
-        pos.NavigationLevel = PageToLevelDictionary.ContainsKey(pos.ReadOrder)?  PageToLevelDictionary[pos.ReadOrder] : string.Empty;
+        pos.NavigationLevel = PageToLevelDictionary.ContainsKey(pos.ReadOrder) ? PageToLevelDictionary[pos.ReadOrder] : string.Empty;
         pos.ScrollPosition = 0;
         SetPosition(pos);
 
@@ -53,7 +53,7 @@ public class EPubNavigationService(NavigationManager navigationManager)
         var pos = GetPosition();
         // pos.NavigationItemIndex[pos.NavigationItemIndex.Length - 1] -= 1;
         pos.ReadOrder -= 1;
-        pos.NavigationLevel = PageToLevelDictionary.ContainsKey(pos.ReadOrder)?  PageToLevelDictionary[pos.ReadOrder] : string.Empty;
+        pos.NavigationLevel = PageToLevelDictionary.ContainsKey(pos.ReadOrder) ? PageToLevelDictionary[pos.ReadOrder] : string.Empty;
         pos.ScrollPosition = -1;
         SetPosition(pos);
 
@@ -61,13 +61,10 @@ public class EPubNavigationService(NavigationManager navigationManager)
 
     public void GenerateNavigationTree(EpubBook book)
     {
-        NavigationTree = GenerateNavigationTree(book, book.Navigation, string.Empty);
+        if (book.Navigation != null)
+            NavigationTree = GenerateNavigationTree(book, book.Navigation, string.Empty);
         PageToLevelDictionary = NavigationTree.SelectMany(n => n.Page, (n, p) =>
- new { PageId = p, Level = n.Level })
- .ToDictionary(d => d.PageId, d => d.Level);
-        // PageToLevelDictionary = NavigationTree.SelectMany(n => n.Page, (n, p) =>
-        //  new { PageId = p, Level = n.Level.Split(",").Select(i => int.Parse(i)).ToArray() })
-        //  .ToDictionary(d => d.PageId, d => d.Level);
+            new { PageId = p, Level = n.Level }).ToDictionary(d => d.PageId, d => d.Level);
     }
 
     private List<ChapterReadingOrderItem> GenerateNavigationTree(EpubBook book, List<EpubNavigationItem> navigation, string level)
@@ -85,10 +82,10 @@ public class EPubNavigationService(NavigationManager navigationManager)
 
             var nav2 = i + 1 < navigation.Count ? navigation[i + 1] : null;
 
-            List<ChapterReadingOrderItem>? nested = null;
+            // List<ChapterReadingOrderItem>? nested = null;
 
             if (nav1.NestedItems != null && nav1.NestedItems.Count > 0)
-                list.AddRange( GenerateNavigationTree(book, nav1.NestedItems, nextLevel) );
+                list.AddRange(GenerateNavigationTree(book, nav1.NestedItems, nextLevel));
 
             List<int> roList = new();
             bool chapterFound = false;

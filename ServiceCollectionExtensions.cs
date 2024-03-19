@@ -7,7 +7,7 @@ namespace EPubBlazor;
 /// <summary>
 /// Extension methods to setup the EPubBlazor services.
 /// </summary>
-public static class ServiceCollectionExtensions
+public static partial class ServiceCollectionExtensions
 {
 
     /// <summary>
@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The given service collection updated with the EPubBlazor services.</returns>
     public static IServiceCollection AddEPubBlazor(this IServiceCollection services, Action<EPubBlazorOptions> optionsBuilder, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
     {
+        Console.WriteLine("Registering EPubBlazor services");
         services.AddJsBlob(serviceLifetime);
         services.AddHttpClient();
         // services.AddSingleton<IBufferService, BufferService>();
