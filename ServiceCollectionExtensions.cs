@@ -28,11 +28,10 @@ public static partial class ServiceCollectionExtensions
     /// <returns>The given service collection updated with the EPubBlazor services.</returns>
     public static IServiceCollection AddEPubBlazor(this IServiceCollection services, Action<EPubBlazorOptions> optionsBuilder, ServiceLifetime serviceLifetime = ServiceLifetime.Scoped)
     {
-        Console.WriteLine("Registering EPubBlazor services");
         services.AddJsBlob(serviceLifetime);
         services.AddHttpClient();
         // services.AddSingleton<IBufferService, BufferService>();
-                services.AddScoped<EPubJsInterop>();
+        services.AddScoped<EPubJsInterop>();
 
         switch (serviceLifetime)
         {

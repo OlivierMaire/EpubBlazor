@@ -6,12 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
 
     <PackageId>EPubBlazor</PackageId>
-    <Version>0.0.2-alpha</Version>
+    <!-- <Version>0.0.2-alpha</Version> -->
     <Authors>Olivier Maire</Authors>
     <Company>Olivier Maire</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>Epub;Blazor;</PackageTags>
+    <PackageProjectUrl>https://github.com/OlivierMaire/EpubBlazor</PackageProjectUrl>
     <RepositoryUrl>https://github.com/OlivierMaire/EpubBlazor.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
 

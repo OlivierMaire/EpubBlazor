@@ -61,7 +61,6 @@
 
         private async void SettingsChanged(Settings settings)
         {
-            Console.WriteLine($"Settings Changed: {settings}");
             FontSize = settings.FontSize;
             FontColor = ThemeService.GetTheme(settings.SelectedTheme).Palette.TextPrimary.Value;
             await Render();
@@ -88,8 +87,6 @@
         public async void OnPositionChanged(  Models.Position position)
         {
             // get position 
-            Console.WriteLine(position);
-            
             if (this.Position.ReadOrder == position.ReadOrder)
             {
                 // just scroll
@@ -161,16 +158,13 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
     if (Document == null || Book == null || cover == null)
     return;
         var elements = Document.QuerySelectorAll(elem);
-        Console.WriteLine($"{elements.Length} {elem} found");
          foreach (var e in elements)
         {
             if (e != null && e.Attributes != null && 
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                @* Console.WriteLine($"1 - Looking for: {url}"); *@
                  url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
-                @* Console.WriteLine($"2 - Looking for: {url}"); *@
 
                 if(Book.Content.AllFiles.ContainsLocalFileWithFilePath(url))
                 {
@@ -214,13 +208,9 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
 
 private async Task FirstRenderCalculations()
 {
-      IFrameSize = await JsInterop.GetIframeSizeAsync();
-            Console.WriteLine(IFrameSize);
-
-
+    IFrameSize = await JsInterop.GetIframeSizeAsync();
     IframeWidth = IFrameSize.Width;
     ColumnGap = IFrameSize.Width / 10; // 10%;
-
 
     ColumnWidth = (IFrameSize.Width / 2 - ColumnGap); // add margin around
 
@@ -264,8 +254,6 @@ var nbOfPages = Math.Round(scrollWidth  / pageStep);
 // make pg nb even 
 nbOfPages = Math.Round(nbOfPages / 2, MidpointRounding.AwayFromZero) * 2;
 var newWidth = nbOfPages * pageStep;
-Console.WriteLine($"nb of pages:  {nbOfPages}, size: {newWidth} ");
-
 containerWidth = (int)newWidth;
 
 StateHasChanged();
@@ -276,50 +264,27 @@ StateHasChanged();
         private void  GoPrevious()
 
         {
-Console.WriteLine("go previous");
-
             // update scroll
-Position.ScrollPosition -= 2;
-Console.WriteLine(Position);
+            Position.ScrollPosition -= 2;
+            decimal scrollTo = pageStep * Position.ScrollPosition;
 
-decimal scrollTo = pageStep * Position.ScrollPosition;
-
-if (scrollTo < 0)
-{
-    Console.WriteLine("Got to next chapeter");
-    navService.GoToPrevious();
-}
-else{
-Console.WriteLine($"Scroll to : {scrollTo} ");
-navService.SetPosition(Position);
-}
-
-@* await JsInterop.ScrollTo(scrollTo ); *@
+            if (scrollTo < 0)
+                navService.GoToPrevious();
+            else 
+                navService.SetPosition(Position);
         }
 
         
         private void GoNext()
-
         {
-Console.WriteLine("go next");
             // update scroll
-Position.ScrollPosition += 2;
-Console.WriteLine(Position);
+            Position.ScrollPosition += 2;
 
-decimal scrollTo = pageStep * Position.ScrollPosition;
-
-if (scrollTo >= containerWidth)
-{
-    Console.WriteLine("Got to next chapeter");
-    navService.GoToNext();
-}
-else{
-Console.WriteLine($"Scroll to : {scrollTo} ");
-navService.SetPosition(Position);
-}
-
-
-@* await JsInterop.ScrollTo(scrollTo ); *@
+            decimal scrollTo = pageStep * Position.ScrollPosition;
+            if (scrollTo >= containerWidth)
+                navService.GoToNext();
+            else
+                navService.SetPosition(Position);
         }
 
         private async Task ScrollToPosition()
@@ -330,12 +295,11 @@ navService.SetPosition(Position);
                 // need to scroll to the last page
                 var source = (containerWidth / pageStep) - 2;
                 Position.ScrollPosition = Math.Round(source / 2, MidpointRounding.AwayFromZero) * 2;
-navService.SetPosition(Position);
-
+                navService.SetPosition(Position);
             }
 
-decimal scrollTo = pageStep * Position.ScrollPosition;
-await JsInterop.ScrollTo(scrollTo );
+                decimal scrollTo = pageStep * Position.ScrollPosition;
+                await JsInterop.ScrollTo(scrollTo );
 
         }
 }
