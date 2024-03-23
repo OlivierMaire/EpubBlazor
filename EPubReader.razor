@@ -1,4 +1,9 @@
-@inject IHttpClientFactory HttpClientFactory
+@using MudBlazor
+@using EPubBlazor.Services
+@using EPubBlazor.Components
+@using EPubBlazor.Models
+@using VersOne.Epub
+
 @inject EPubNavigationService navService
 @inject EPubSettingsService SettingsService
 @inject EPubThemeService ThemeService
@@ -33,7 +38,10 @@
 @code {
     MudTheme _ePubTheme = EPubBlazorTheme.GetDefaultTheme();
 
-    [Parameter] public string Url { get; set; } = default!;
+    @* [Parameter] public string Url { get; set; } = default!; *@
+    [Parameter] public Func<Task<VersOne.Epub.EpubBook?>>? GetBookData { get; set; }
+    [Parameter] public Action<string>? SaveBookmark { get; set; } = null;
+
     [Parameter] public string AppName { get; set; } = default!;
     EpubBook? Book;
 
@@ -49,8 +57,12 @@
     protected override async Task OnInitializedAsync()
     {
         SettingsService.SettingsChanged += SettingsChanged;
-        Book = await GetBookFromUrlAsync(Url);
-        navService.GenerateNavigationTree(Book);
+        if (GetBookData != null)
+        {
+            Book = await GetBookData();
+            if (Book != null)
+                navService.GenerateNavigationTree(Book);
+        }
     }
 
     private void SettingsChanged(Settings settings)
@@ -59,18 +71,18 @@
         StateHasChanged();
     }
 
-    private async Task<EpubBook> GetBookFromUrlAsync(string url)
-    {
-        using (var httpClient = HttpClientFactory.CreateClient())
-        {
-            using (var stream = await httpClient.GetStreamAsync(url))
-            {
-                var book = await EpubReader.ReadBookAsync(stream);
-                return book;
+    @* private async Task<EpubBook> GetBookFromUrlAsync(string url)
+{
+using (var httpClient = HttpClientFactory.CreateClient())
+{
+using (var stream = await httpClient.GetStreamAsync(url))
+{
+var book = await EpubReader.ReadBookAsync(stream);
+return book;
 
-            }
-        }
-    }
+}
+}
+} *@
 
 
 }
