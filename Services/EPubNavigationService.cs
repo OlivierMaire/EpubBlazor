@@ -71,45 +71,70 @@ public class EPubNavigationService(NavigationManager navigationManager)
     {
         var list = new List<ChapterReadingOrderItem>();
 
-        int j = 0;
-
-
         for (int i = 0; i < navigation.Count; i++)
         {
             var nextLevel = string.IsNullOrEmpty(level) ? i.ToString() : $"{level},{i}";
 
             var nav1 = navigation[i];
 
-            var nav2 = i + 1 < navigation.Count ? navigation[i + 1] : null;
-
-            // List<ChapterReadingOrderItem>? nested = null;
+            list.Add(new ChapterReadingOrderItem(nextLevel));
 
             if (nav1.NestedItems != null && nav1.NestedItems.Count > 0)
                 list.AddRange(GenerateNavigationTree(book, nav1.NestedItems, nextLevel));
+        }
 
-            List<int> roList = new();
-            bool chapterFound = false;
-            for (; j < book.ReadingOrder.Count; j++)
-            // foreach (var ro in book.ReadingOrder)
-            {
+        int pageCount = 0;
 
-                if (book.ReadingOrder[j].FilePath == nav1.Link?.ContentFilePath)
-                    chapterFound = true;
-
-                if (nav2 != null && book.ReadingOrder[j].FilePath == nav2.Link?.ContentFilePath)
-                    break;
-
-                if (chapterFound)
-                    roList.Add(j);
-            }
-
-            list.Add(new ChapterReadingOrderItem(nextLevel, roList.ToArray()));
+        for (int i = 0; i < list.Count; i++)
+        {
+            list[i].Page = GenerateNavigationPages(list[i].Level, i + 1 < list.Count ? list[i + 1].Level : null, book, pageCount);
         }
 
         return list;
 
     }
 
-    public record ChapterReadingOrderItem(string Level, int[] Page);
+    private int[] GenerateNavigationPages(string fromLevel, string? toLevel, EpubBook book, int pageCount)
+    {
+        var fromNav = GetNavigationItem(fromLevel, book);
+        var toNav = GetNavigationItem(toLevel, book);
+
+
+        List<int> roList = [];
+        bool chapterFound = false;
+        for (; pageCount < book.ReadingOrder.Count; pageCount++)
+        {
+
+            if (book.ReadingOrder[pageCount].FilePath == fromNav?.Link?.ContentFilePath)
+                chapterFound = true;
+
+            if (toNav != null && book.ReadingOrder[pageCount].FilePath == toNav.Link?.ContentFilePath)
+                break;
+
+            if (chapterFound)
+                roList.Add(pageCount);
+        }
+
+        return roList.ToArray();
+
+    }
+
+    private EpubNavigationItem? GetNavigationItem(string? level, EpubBook book)
+    {
+        if (string.IsNullOrEmpty(level)) return null;
+
+        var levels = level.Split(',');
+        var nav = book.Navigation[int.Parse(levels[0])];
+        for (int l = 1; l < levels.Length; l++)
+        {
+            nav = nav.NestedItems[int.Parse(levels[l])];
+        }
+        return nav;
+    }
+
+    public record ChapterReadingOrderItem(string Level)
+    {
+        public int[] Page { get; internal set; } = [];
+    }
 
 }

@@ -53,61 +53,61 @@
 
     IDocument Document = null!;
 
-        protected override void OnInitialized()
-        {
-            SettingsService.SettingsChanged += SettingsChanged;
-            base.OnInitialized();
-        }
-
-        private async void SettingsChanged(Settings settings)
-        {
-            FontSize = settings.FontSize;
-            FontColor = ThemeService.GetTheme(settings.SelectedTheme).Palette.TextPrimary.Value;
-            await Render();
-
-        }
-
-        protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-          if (firstRender)
-          {
+        SettingsService.SettingsChanged += SettingsChanged;
+        base.OnInitialized();
+    }
+
+    private async void SettingsChanged(Settings settings)
+    {
+        FontSize = settings.FontSize;
+        FontColor = ThemeService.GetTheme(settings.SelectedTheme).Palette.TextPrimary.Value;
+        await Render();
+
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
             navService.PositionChanged += OnPositionChanged; 
-             // load current Position
+            // load current Position
             this.Position = navService.GetPosition();
             await LoadContent();
             await JsInterop.InitAsync(IFrame, Scroll);
             await FirstRenderCalculations();
-             UpdateContent();
+            UpdateContent();
             await UpdateContent2();
-            
+
             await this.ScrollToPosition();
-          }
-        } 
-
-        public async void OnPositionChanged(  Models.Position position)
-        {
-            // get position 
-            if (this.Position.ReadOrder == position.ReadOrder)
-            {
-                // just scroll
-                this.Position = position;
-                await this.ScrollToPosition();
-            }
-            else
-            {
-                this.Position = position;
-
-                // redraw
-                await Render();
-            }
-
         }
+    } 
+
+    public async void OnPositionChanged(  Models.Position position)
+    {
+        // get position 
+        if (this.Position.ReadOrder == position.ReadOrder)
+        {
+            // just scroll
+            this.Position = position;
+            await this.ScrollToPosition();
+        }
+        else
+        {
+            this.Position = position;
+
+            // redraw
+            await Render();
+        }
+
+    }
 
     public async Task Render()
     {
         await LoadContent();
         await JsInterop.InitAsync(IFrame, Scroll);
-         UpdateContent();
+        UpdateContent();
         await UpdateContent2();
         await this.ScrollToPosition();
     }
@@ -143,26 +143,88 @@
         string documentPath = CurrentReadingOrder?.FilePath ?? string.Empty;
         documentPath = documentPath.LastIndexOf('/') > 0 ? 
             documentPath.Remove(documentPath.LastIndexOf('/')+1) : "/";
-        
+
         await ReplaceTags("link", "href", documentPath, Book?.Content?.Css );
         await ReplaceTags("img", "src", documentPath, Book?.Content?.Images );
         await ReplaceTags("image", "href", documentPath , Book?.Content?.Cover );
-
+        await ReplaceTags("image", "href", documentPath , Book?.Content?.Cover );
+        await ReplaceStyle();
+        
         DisplayContent = source;
         StateHasChanged();
 
     }
-     
-private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubLocalByteContentFile? cover)
-{
-    if (Document == null || Book == null || cover == null)
-    return;
+
+    private async Task ReplaceTags(string elem, string attribute, string documentPath, EpubLocalByteContentFile? cover)
+    {
+        if (Document == null || Book == null || cover == null)
+            return;
         var elements = Document.QuerySelectorAll(elem);
-         foreach (var e in elements)
+        foreach (var e in elements)
         {
             if (e != null && e.Attributes != null && 
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
+                var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
+                url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
+
+                if(Book.Content.AllFiles.ContainsLocalFileWithFilePath(url))
+                {
+                    var blob = await BlobManagerService.AddBlobAsync(url, 
+                    cover.Content, 
+                    cover.ContentMimeType );
+                    e.Attributes[attribute]!.Value =  blob.Uri.ToString() ; 
+                }
+            }
+        }
+    }
+
+    private async Task ReplaceStyle()
+    {
+        if (Document == null || Book == null)
+            return;
+        var elements = Document.QuerySelectorAll("style[type='text/css']");
+        foreach (var e in elements)
+        {
+            if (e != null)
+            { 
+                var matches = System.Text.RegularExpressions.Regex.Matches(e.TextContent, ".*src: ?url\\((.*)\\)");
+                @* Console.WriteLine($"Matches: {matches.Count}"); *@
+foreach ( System.Text.RegularExpressions.Match match in matches)
+{
+                @* Console.WriteLine($"Match: {match.Groups[1].Value}"); *@
+                var machValue = match.Groups[1].Value;
+                var url = match.Groups[1].Value;
+                url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
+
+                if(Book.Content.AllFiles.ContainsLocalFileWithFilePath(url))
+                {
+
+                    var file = Book.Content.AllFiles.Local.Single(l => l.FilePath == url);
+                    
+                    
+                                        var blob = await BlobManagerService.AddBlobAsync(url, 
+                (file as EpubLocalByteContentFile).Content,
+                    file.ContentMimeType );
+
+                    e.TextContent = e.TextContent.Replace(machValue, blob.Uri.ToString());
+                }
+    else           if(Book.Content.AllFiles.ContainsLocalFileWithFilePath("OEBPS/" + url))
+                {
+
+                    var file = Book.Content.AllFiles.Local.Single(l => l.FilePath == "OEBPS/" + url);
+                    
+                    
+                                        var blob = await BlobManagerService.AddBlobAsync(url, 
+                (file as EpubLocalByteContentFile).Content,
+                    file.ContentMimeType );
+
+                    e.TextContent = e.TextContent.Replace(machValue, blob.Uri.ToString());
+                }
+                
+}
+
+@*                 
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
                  url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
 
@@ -172,7 +234,7 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
                     cover.Content, 
                     cover.ContentMimeType );
                     e.Attributes[attribute]!.Value =  blob.Uri.ToString() ; 
-                }
+                } *@
             }
         }
 }
