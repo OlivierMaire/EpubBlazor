@@ -36,6 +36,11 @@ public class EPubJsInterop : IAsyncDisposable
         var module = await moduleTask.Value;
         return await module.InvokeAsync<System.Drawing.Size>("epubInterop.getIFrameSize");
     }
+    public async ValueTask<System.Drawing.Size> GetContentViewSizeAsync()
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<System.Drawing.Size>("epubInterop.getContentViewSize");
+    }
 
     public async ValueTask<int> GetScrollWidth()
     {

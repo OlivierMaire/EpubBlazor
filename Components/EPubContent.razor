@@ -3,6 +3,7 @@
 @using AngleSharp.Dom
 @using AngleSharp.Text
 @using EPubBlazor.Services
+@using MudBlazor.Services
 @using VersOne.Epub
 
 @inject BlobManagerService BlobManagerService
@@ -10,6 +11,8 @@
 @inject EPubSettingsService SettingsService
 @inject EPubThemeService ThemeService
 @inject EPubJsInterop JsInterop
+@inject IBrowserViewportService ViewportService
+@implements IBrowserViewportObserver
  
 <div class="epub-content-container">
     <div class="buttons">
@@ -40,6 +43,7 @@
 
     decimal pageStep = 0m;
     int IframeWidth = 0;
+    bool IsOnePageDisplay = false;
 
     int containerWidth = 0;
     string containerStyle => containerWidth > 0 ? $"width: {containerWidth}px;" : "";
@@ -56,8 +60,33 @@
     protected override void OnInitialized()
     {
         SettingsService.SettingsChanged += SettingsChanged;
+        
+        ViewportService.SubscribeAsync(this, false);
         base.OnInitialized();
+
     }
+    
+    Guid IBrowserViewportObserver.Id { get; } = Guid.NewGuid();
+async Task IBrowserViewportObserver.NotifyBrowserViewportChangeAsync(BrowserViewportEventArgs browserViewportEventArgs)
+    {
+        Console.WriteLine("size change event");
+        var size = await JsInterop.GetContentViewSizeAsync();
+       await  FirstRenderCalculations(size);
+                UpdateContent();
+            await UpdateContent2();
+
+            await this.ScrollToPosition();
+        await InvokeAsync(StateHasChanged);
+    }
+
+     public async ValueTask DisposeAsync() => await ViewportService.UnsubscribeAsync(this);
+
+
+    ResizeOptions IBrowserViewportObserver.ResizeOptions { get; } = new()
+    {
+        ReportRate = 250,
+        NotifyOnBreakpointOnly = true
+    };
 
     private async void SettingsChanged(Settings settings)
     {
@@ -237,23 +266,23 @@ foreach ( System.Text.RegularExpressions.Match match in matches)
                 } *@
             }
         }
-}
+    }
 
-private async Task ReplaceTags(string elem, string attribute, string documentPath, dynamic? coll)
-{
-    if (Document == null || Book == null || coll == null)
-    return;
+    private async Task ReplaceTags(string elem, string attribute, string documentPath, dynamic? coll)
+    {
+        if (Document == null || Book == null || coll == null)
+            return;
         var elements = Document?.QuerySelectorAll(elem);
-    if (elements == null)
-        return;
+        if (elements == null)
+            return;
 
-         foreach (var e in elements)
+        foreach (var e in elements)
         {
             if (e != null && e.Attributes != null && 
             e.Attributes[attribute] != null && !string.IsNullOrEmpty(e.Attributes[attribute]?.Value))
             {
                 var url = documentPath + e.Attributes[attribute]?.Value ?? string.Empty;
-                 url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
+                url = new UriBuilder(){Path = url}.Uri.LocalPath.TrimStart('/');
 
                 if (coll?.ContainsLocalFileWithFilePath(url))
                 {
@@ -264,23 +293,35 @@ private async Task ReplaceTags(string elem, string attribute, string documentPat
                 }
             }
         }
-}
+    }
 
 
 
-private async Task FirstRenderCalculations()
-{
+    private async Task FirstRenderCalculations(System.Drawing.Size? size = null)
+    {
     IFrameSize = await JsInterop.GetIframeSizeAsync();
+    if (size != null)
+    IFrameSize = size.Value;
     IframeWidth = IFrameSize.Width;
+
+        IsOnePageDisplay = false;
+    if (IFrameSize.Width < IFrameSize.Height)
+        IsOnePageDisplay = true;
+
     ColumnGap = IFrameSize.Width / 10; // 10%;
 
     ColumnWidth = (IFrameSize.Width / 2 - ColumnGap); // add margin around
+    if (IsOnePageDisplay)
+        ColumnWidth = (IFrameSize.Width - ColumnGap); // add margin around
+
 
     pageStep =  ColumnWidth + ColumnGap;
     if (pageStep == 0)
          pageStep = 1;
 
     IframeWidth = (int)pageStep * 2;
+    if (IsOnePageDisplay)
+        IframeWidth = (int)pageStep;
 
 }
 
@@ -327,6 +368,9 @@ StateHasChanged();
 
         {
             // update scroll
+    if (IsOnePageDisplay)
+            Position.ScrollPosition -= 1;
+    else
             Position.ScrollPosition -= 2;
             decimal scrollTo = pageStep * Position.ScrollPosition;
 
@@ -340,6 +384,9 @@ StateHasChanged();
         private void GoNext()
         {
             // update scroll
+    if (IsOnePageDisplay)
+            Position.ScrollPosition += 1;
+    else
             Position.ScrollPosition += 2;
 
             decimal scrollTo = pageStep * Position.ScrollPosition;

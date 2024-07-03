@@ -10,6 +10,20 @@ export const epubInterop = {
       height: this.iframe.clientHeight
     };
   },
+  getContentViewSize: function() {
+
+    var element = document.querySelector(".epub-content-view");
+    var styles = window.getComputedStyle(element);
+
+    return {
+      width: Math.floor(element.clientWidth
+      - parseFloat(styles.paddingLeft)
+      - parseFloat(styles.paddingRight)),
+      height: Math.floor(element.clientHeight
+      - parseFloat(styles.paddingTop)
+      - parseFloat(styles.paddingBottom))
+    };
+  },
 
   getScrollWidth: function () {
     if (this.iframe.contentWindow)
