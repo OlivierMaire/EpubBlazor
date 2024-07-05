@@ -27,7 +27,10 @@ export const epubInterop = {
 
   getScrollWidth: function () {
     if (this.iframe.contentWindow)
+    {
+      // console.log("scroll width: " + this.iframe.contentWindow.document.body.scrollWidth);
       return this.iframe.contentWindow.document.body.scrollWidth;
+    }
     else
       return 1000;
   },
